@@ -8,8 +8,8 @@ use std::path::PathBuf;
 mod anki;
 mod dict;
 
-use crate::dict::CEDict;
 use crate::anki::Anki;
+use crate::dict::CEDict;
 
 /// Chunk up chinese text and make an Anki deck
 #[derive(Parser, Debug)]
@@ -34,7 +34,7 @@ fn main() {
     let to_chunk = match (args.file, args.thing_to_say) {
         (Some(f), None) => read_to_string(f).unwrap(),
         (None, Some(t)) => t,
-        _ => panic!("Supply either file or sentence")
+        _ => panic!("Supply either file or sentence"),
     };
     let jieba = Jieba::new();
     let words = jieba.cut(&to_chunk, false);
@@ -44,7 +44,7 @@ fn main() {
     if let Some(o) = args.output {
         let dict = CEDict::new();
         let mut anki = Anki::new(o.split_once(".").unwrap().0);
-    
+
         for word in words {
             if let Some(results) = dict.dict.get(word) {
                 for result in results {
@@ -56,6 +56,5 @@ fn main() {
         }
 
         anki.write_to_file(&o);
-
     }
 }
