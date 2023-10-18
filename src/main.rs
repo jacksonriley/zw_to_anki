@@ -1,7 +1,6 @@
-
-
 use clap::Parser;
 use jieba_rs::Jieba;
+use std::collections::HashSet;
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
@@ -37,7 +36,7 @@ fn main() {
         _ => panic!("Supply either file or sentence"),
     };
     let jieba = Jieba::new();
-    let words = jieba.cut(&to_chunk, false);
+    let words: HashSet<_> = jieba.cut(&to_chunk, false).into_iter().collect();
 
     println!("{:?}", &words);
 
