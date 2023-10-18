@@ -1,6 +1,6 @@
 use crate::dict::{Hanzi, Tone};
 
-use genanki_rs::{basic_model, Deck, Error, Field, Model, Note, Template};
+use genanki_rs::{Deck, Field, Model, Note, Template};
 
 pub struct Anki {
     model: Model,
