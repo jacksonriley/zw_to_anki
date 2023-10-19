@@ -13,7 +13,6 @@ Then import the .apkg into Anki and you're good to go.
  - proper error handling, tests
  - allow to specify desired tone colours/turn them off
  - add examples from the text on each flashcard
- - add proper diacritics for pinyin
  - add fallback for chunks not in the dictionary - fallback to adding characters. For e.g. jieba picks out "共同话题" as a chunk but this isn't in the dictionary. Can we be smarter than just adding individual chars? Perhaps greedily take from the front?:
    - :no: 共同话 && :yes: 题
    - :yes: 共同 && :yes: 话题 :green_tick:

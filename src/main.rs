@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 mod anki;
 mod dict;
+mod pinyin;
 
 use crate::anki::Anki;
 use crate::dict::CEDict;

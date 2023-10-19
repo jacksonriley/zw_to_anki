@@ -1,4 +1,5 @@
 use crate::dict::{Hanzi, Tone};
+use crate::pinyin::add_diacritic;
 
 use genanki_rs::{Deck, Field, Model, Note, Template};
 
@@ -29,7 +30,7 @@ impl Anki {
                 ),
                 Template::new("Card 2")
                     .qfmt(
-                        "<div class=hanzi>{{Hanzi}}</div>
+                        "<div class=chinese>{{Hanzi}}</div>
                 ",
                     )
                     .afmt(
@@ -55,12 +56,6 @@ impl Anki {
         .linux .chinese { font-family: "Kochi Mincho", "東風明朝"; }
         .mobile .chinese { font-family: "PingFang SC"; }
         .chinese { font-size: 30px;}
-        
-        .win .hanzi { font-family: "MS Mincho", "ＭＳ 明朝"; }
-        .mac .hanzi { }
-        .linux .hanzi { font-family: "Kochi Mincho", "東風明朝"; }
-        .mobile .hanzi { font-family: "PingFang SC"; }
-        .hanzi { font-size: 30px;}
         
         .reading { font-size: 16px;}
         .comment {font-size: 15px; color:grey;}
@@ -100,7 +95,7 @@ impl Anki {
                     // Pinyin
                     &hz.pinyin
                         .iter()
-                        .map(|p| Self::colourise(&p.text, p.tone))
+                        .map(|p| Self::colourise(&add_diacritic(&p.text, p.tone), p.tone))
                         .collect::<String>(),
                     // Example
                     "",
@@ -113,11 +108,7 @@ impl Anki {
     fn colourise(token: &str, tone: Option<Tone>) -> String {
         match tone {
             None => token.into(),
-            Some(Tone::First) => format!(r#"<span class="tone1">{}</span>"#, token),
-            Some(Tone::Second) => format!(r#"<span class="tone2">{}</span>"#, token),
-            Some(Tone::Third) => format!(r#"<span class="tone3">{}</span>"#, token),
-            Some(Tone::Fourth) => format!(r#"<span class="tone4">{}</span>"#, token),
-            Some(Tone::Fifth) => format!(r#"<span class="tone5">{}</span>"#, token),
+            Some(t) => format!(r#"<span class="tone{}">{}</span>"#, usize::from(t), token),
         }
     }
 

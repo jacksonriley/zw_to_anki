@@ -30,6 +30,18 @@ impl From<u8> for Tone {
     }
 }
 
+impl From<Tone> for usize {
+    fn from(value: Tone) -> Self {
+        match value {
+            Tone::First => 1,
+            Tone::Second => 2,
+            Tone::Third => 3,
+            Tone::Fourth => 4,
+            Tone::Fifth => 5,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct PinYin {
     pub text: String,
