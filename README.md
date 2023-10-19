@@ -8,7 +8,6 @@ Then import the .apkg into Anki and you're good to go.
  - add grabbing sound from google TTS and stick that on the flashcards
  - better heuristics about ignoring surnames, maybe?
  - squash duplicates into one note?
- - filter out HSK<N
  - probably better filtering of whitespace/punctuation
  - proper error handling, tests
  - allow to specify desired tone colours/turn them off
