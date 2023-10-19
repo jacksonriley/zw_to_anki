@@ -163,6 +163,43 @@ mod test {
     #[test]
     fn test_parse_name() {
         let hz = CEDict::parse_line("亞歷山大·杜布切克 亚历山大·杜布切克 [Ya4 li4 shan1 da4 · Du4 bu4 qie1 ke4] /Alexander Dubček (1921-1992), leader of Czechoslovakia (1968-1969)/");
-        assert_eq!(hz.simplified, "亞歷山大·杜布切克");
+        assert_eq!(hz.simplified, "亚历山大·杜布切克");
+        assert_eq!(
+            hz.pinyin,
+            vec![
+                PinYin {
+                    text: "Ya".into(),
+                    tone: Some(Tone::Fourth)
+                },
+                PinYin {
+                    text: "li".into(),
+                    tone: Some(Tone::Fourth)
+                },
+                PinYin {
+                    text: "shan".into(),
+                    tone: Some(Tone::First)
+                },
+                PinYin {
+                    text: "da".into(),
+                    tone: Some(Tone::Fourth)
+                },
+                PinYin {
+                    text: "Du".into(),
+                    tone: Some(Tone::Fourth)
+                },
+                PinYin {
+                    text: "bu".into(),
+                    tone: Some(Tone::Fourth)
+                },
+                PinYin {
+                    text: "qie".into(),
+                    tone: Some(Tone::First)
+                },
+                PinYin {
+                    text: "ke".into(),
+                    tone: Some(Tone::Fourth)
+                }
+            ]
+        );
     }
 }
