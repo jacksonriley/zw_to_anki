@@ -24,7 +24,11 @@ impl Anki {
                 Template::new("Card 1").qfmt("<div>{{English}}</div>").afmt(
                     r#"<div>{{English}}</div>
                 <div class=reading>{{Pinyin}}</div>
-                <div class=chinese>{{Colour}}</div>
+                <div class=chinese>
+                    <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
+                        {{Colour}}
+                    </a>
+                </div>
                 <div class=chinese>{{Example}}</div>
                 "#,
                 ),
@@ -34,7 +38,11 @@ impl Anki {
                 ",
                     )
                     .afmt(
-                        r#"<div class=chinese>{{Colour}}</div>
+                        r#"<div class=chinese>
+                            <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
+                                {{Colour}}
+                            </a>
+                        </div>
                 <div class=reading>{{Pinyin}}</div>
                 <div>{{English}}</div>
                 <div class=chinese>{{Example}}</div>

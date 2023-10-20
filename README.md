@@ -16,7 +16,6 @@ Options:
 
 ## TODO:
  - add grabbing sound from google TTS and stick that on the flashcards
- - add link to Pleco from flashcard: https://forums.ankiweb.net/t/control-pleco-with-anki-chinese/9649
  - better heuristics about ignoring surnames, maybe?
  - squash duplicates into one note?
  - probably better filtering of whitespace/punctuation
