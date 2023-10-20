@@ -21,32 +21,33 @@ impl Anki {
                 Field::new("Example"),
             ],
             vec![
-                Template::new("Card 1").qfmt("<div>{{English}}</div>").afmt(
-                    r#"<div>{{English}}</div>
-                <div class=reading>{{Pinyin}}</div>
-                <div class=chinese>
-                    <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
-                        {{Colour}}
-                    </a>
-                </div>
-                <div class=chinese>{{Example}}</div>
-                "#,
-                ),
-                Template::new("Card 2")
-                    .qfmt(
-                        "<div class=chinese>{{Hanzi}}</div>
-                ",
-                    )
+                Template::new("Card 1")
+                    .qfmt("<div>{{English}}</div>")
                     .afmt(
-                        r#"<div class=chinese>
+                        r#"
+                        <div>{{English}}</div>
+                        <div class=reading>{{Pinyin}}</div>
+                        <div class=chinese>
                             <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
                                 {{Colour}}
                             </a>
                         </div>
-                <div class=reading>{{Pinyin}}</div>
-                <div>{{English}}</div>
-                <div class=chinese>{{Example}}</div>
-                "#,
+                        <div class=chinese>{{Example}}</div>
+                        "#,
+                    ),
+                Template::new("Card 2")
+                    .qfmt("<div class=chinese>{{Hanzi}}</div>")
+                    .afmt(
+                        r#"
+                        <div class=chinese>
+                            <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
+                                {{Colour}}
+                            </a>
+                        </div>
+                        <div class=reading>{{Pinyin}}</div>
+                        <div>{{English}}</div>
+                        <div class=chinese>{{Example}}</div>
+                        "#,
                     ),
             ],
         )

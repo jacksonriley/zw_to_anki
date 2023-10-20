@@ -1,9 +1,9 @@
 use clap::Parser;
+use hsk::Hsk;
 use jieba_rs::Jieba;
 use std::collections::HashSet;
 use std::fs::read_to_string;
 use std::path::PathBuf;
-use hsk::Hsk;
 
 mod anki;
 mod dict;
@@ -19,7 +19,7 @@ struct Args {
     /// File to be converted to flashcards
     #[arg(short, long)]
     file: Option<PathBuf>,
-    
+
     /// Text to be converted to flashcards
     #[arg(short, long)]
     text: Option<String>,
@@ -47,7 +47,7 @@ fn main() {
 
     println!("{:?}", &words);
 
-	let hsk_list = Hsk::new();
+    let hsk_list = Hsk::new();
 
     if let Some(o) = args.output {
         let dict = CEDict::new();
