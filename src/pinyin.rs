@@ -22,7 +22,7 @@ pub fn add_diacritic(text: &str, tone: Option<Tone>) -> String {
             .position(|c| VOWELS.contains(c))
             .expect("Pinyin always contains a vowel");
 
-    return format!(
+    format!(
         "{}{}{}",
         &text[..first_vowel_idx],
         add_diacritic_to_vowel_group(
@@ -30,7 +30,7 @@ pub fn add_diacritic(text: &str, tone: Option<Tone>) -> String {
             tone_which_needs_adding
         ),
         &text[last_vowel_idx + 1..]
-    );
+    )
 }
 
 fn add_diacritic_to_vowel_group(vowels: &str, tone: Tone) -> String {

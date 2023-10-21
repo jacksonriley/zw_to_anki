@@ -69,16 +69,16 @@ pub struct CEDict {
 
 impl CEDict {
     pub fn new() -> Self {
-        return Self {
+        Self {
             dict: Self::parse(),
-        };
+        }
     }
 
     fn parse() -> HashMap<String, Vec<Hanzi>> {
         let mut ret = HashMap::new();
 
         for line in CE_DICT.lines() {
-            if line.starts_with("#") {
+            if line.starts_with('#') {
                 continue;
             }
             let hz = Self::parse_line(line);
@@ -95,10 +95,10 @@ impl CEDict {
     fn parse_line(line: &str) -> Hanzi {
         // Split first by / to get words and pinyin, and then all of the definitions.
         // Then split by [ to get the words and then the pinyin
-        let mut defs = line.split("/");
+        let mut defs = line.split('/');
         let words_and_pinyin = defs.next().unwrap();
-        let (words, pinyin_trailing) = words_and_pinyin.split_once("[").unwrap();
-        let simplified = words.split_whitespace().skip(1).next().unwrap();
+        let (words, pinyin_trailing) = words_and_pinyin.split_once('[').unwrap();
+        let simplified = words.split_whitespace().nth(1).unwrap();
         let pinyin = pinyin_trailing.trim_end_matches("] ");
 
         let pinyins = pinyin
@@ -158,11 +158,7 @@ fn generate_all_chunkings(word: &str) -> Vec<Vec<String>> {
     let cs = word.chars().collect::<Vec<_>>();
     let mut results: Vec<Vec<String>> = Vec::new();
     iterate_all_subdivisions(&mut Vec::new(), &cs, &mut |x| {
-        results.push(
-            x.iter()
-                .map(|y| y.into_iter().collect::<String>())
-                .collect(),
-        );
+        results.push(x.iter().map(|y| y.iter().collect::<String>()).collect());
     });
     results
         .into_iter()
@@ -175,7 +171,7 @@ fn iterate_all_subdivisions<'a, F>(head: &mut Vec<&'a [char]>, rest: &'a [char],
 where
     F: FnMut(&[&[char]]),
 {
-    if rest.len() == 0 {
+    if rest.is_empty() {
         f(head);
     } else {
         for i in 1..=rest.len() {

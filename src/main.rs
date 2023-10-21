@@ -1,4 +1,3 @@
-use cjk;
 use clap::Parser;
 use hsk::Hsk;
 use jieba_rs::Jieba;
@@ -52,7 +51,7 @@ fn main() {
 
     if let Some(o) = args.output {
         let dict = CEDict::new();
-        let mut anki = Anki::new(o.split_once(".").unwrap().0);
+        let mut anki = Anki::new(o.split_once('.').unwrap().0);
 
         for word in words {
             if !cjk::is_simplified_chinese(word) {
