@@ -9,7 +9,7 @@ mod anki;
 mod dict;
 mod pinyin;
 
-use crate::anki::Anki;
+use crate::anki::{Anki, ToneColours};
 use crate::dict::CEDict;
 
 /// Chunk up chinese text and make an Anki deck
@@ -31,6 +31,10 @@ struct Args {
     /// Optionally, an HSK level. Words that are in HSK at or below this level will not be added to the deck.
     #[arg(long)]
     hsk_filter: Option<u8>,
+
+    /// Optionally: either "off" to turn tone colours off, or five semicolon-separated RGB colour codes for the five tones. For example, '00e304;b35815;f00f0f;1767fe;777777' (the default).
+    #[arg(long)]
+    tone_colours: Option<ToneColours>,
 }
 
 fn main() {
@@ -51,7 +55,10 @@ fn main() {
 
     if let Some(o) = args.output {
         let dict = CEDict::new();
-        let mut anki = Anki::new(o.split_once('.').unwrap().0);
+        let mut anki = Anki::new(
+            o.split_once('.').unwrap().0,
+            &args.tone_colours.unwrap_or_default(),
+        );
 
         for word in words {
             if !cjk::is_simplified_chinese(word) {

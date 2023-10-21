@@ -1,7 +1,75 @@
+use std::str::FromStr;
+
 use crate::dict::{Hanzi, Tone};
 use crate::pinyin::add_diacritic;
 
 use genanki_rs::{Deck, Field, Model, Note, Template};
+
+#[derive(Debug, Clone)]
+pub enum ToneColours {
+    /// No tone colours
+    Off,
+    /// Specify semicolon-separated RGB codes for tones 1-5
+    On([String; 5]),
+}
+
+impl FromStr for ToneColours {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.to_lowercase()[..] {
+            "off" | "none" => Ok(ToneColours::Off),
+            other => Ok(ToneColours::On(
+                other
+                    .split(';')
+                    .map(|v| {
+                        if v.len() == 6 && v.chars().all(char::is_alphanumeric) {
+                            Ok(v.to_string())
+                        } else {
+                            Err(format!("Expected 6-char alphanumeric code, got {v}"))
+                        }
+                    })
+                    .collect::<Result<Vec<String>, String>>()?
+                    .try_into()
+                    .map_err(|_| {
+                        format!("Should specify five RGB codes, specified '{s}' instead")
+                    })?,
+            )),
+        }
+    }
+}
+
+impl Default for ToneColours {
+    fn default() -> Self {
+        ToneColours::On([
+            "00e304".into(),
+            "b35815".into(),
+            "f00f0f".into(),
+            "1767fe".into(),
+            "777777".into(),
+        ])
+    }
+}
+
+impl ToneColours {
+    fn css(&self) -> String {
+        match self {
+            ToneColours::Off => ".tone1 {color: black;}
+                 .tone2 {color: black;}
+                 .tone3 {color: black;}
+                 .tone4 {color: black;}
+                 .tone5 {color: black;}"
+                .into(), // TODO: Feel like I should just be able to return String::default here... but then they end up blue (from the Pleco link I guess). What's going on?
+            ToneColours::On([t1, t2, t3, t4, t5]) => format!(
+                ".tone1 {{color: #{t1};}}
+                 .tone2 {{color: #{t2};}}
+                 .tone3 {{color: #{t3};}}
+                 .tone4 {{color: #{t4};}}
+                 .tone5 {{color: #{t5};}}"
+            ),
+        }
+    }
+}
 
 pub struct Anki {
     model: Model,
@@ -9,7 +77,7 @@ pub struct Anki {
 }
 
 impl Anki {
-    pub fn new(deck_name: &str) -> Self {
+    pub fn new(deck_name: &str, tone_colours: &ToneColours) -> Self {
         let model: Model = Model::new(
             1607392319,
             "Simple Model",
@@ -71,13 +139,7 @@ impl Anki {
         .tags {color:gray;text-align:right;font-size:10pt;}
         .note {color:gray;font-size:12pt;margin-top:20pt;}
         .hint {font-size:12pt;}
-        .answer { background-color:bisque; border:dotted;border-width:1px}
-        
-        .tone1 {color: #00e304;}
-        .tone2 {color: #b35815;}
-        .tone3 {color: #f00f0f;}
-        .tone4 {color: #1767fe;}
-        .tone5 {color: #777777;}"#,
+        .answer { background-color:bisque; border:dotted;border-width:1px}"#.to_string() + &tone_colours.css(),
         );
 
         let deck = Deck::new(1234, deck_name, "");

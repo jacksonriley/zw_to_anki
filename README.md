@@ -19,6 +19,5 @@ Options:
  - better heuristics about ignoring surnames, maybe?
  - squash duplicates into one note?
  - proper error handling, tests
- - allow to specify desired tone colours/turn them off
  - add examples from the text on each flashcard
  - CI/CD
