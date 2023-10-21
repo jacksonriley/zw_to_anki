@@ -1,6 +1,6 @@
 use crate::dict::Tone;
 
-const VOWELS: &'static str = "aeiouüAEIOUÜ";
+const VOWELS: &str = "aeiouüAEIOUÜ";
 
 pub fn add_diacritic(text: &str, tone: Option<Tone>) -> String {
     let tone_which_needs_adding = match tone {

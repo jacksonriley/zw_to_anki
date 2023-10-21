@@ -2,11 +2,7 @@ use std::collections::HashMap;
 use std::convert::From;
 use std::vec::Vec;
 
-const CE_DICT: &'static str = include_str!("cedict_1_0_ts_utf-8_mdbg.txt");
-// const CE_DICT: &str =
-//     "一氧化二氮 一氧化二氮 [yi1 yang3 hua4 er4 dan4] /nitrous oxide N2O/laughing gas/
-// 一氧化氮 一氧化氮 [yi1 yang3 hua4 dan4] /nitric oxide/
-// 一氧化碳 一氧化碳 [yi1 yang3 hua4 tan4] /carbon monoxide CO/";
+const CE_DICT: &str = include_str!("cedict_1_0_ts_utf-8_mdbg.txt");
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Tone {
@@ -55,7 +51,7 @@ impl From<&str> for PinYin {
         let tone = tone_str.parse::<u8>().ok().map(Tone::from);
         Self {
             text: text.to_string(),
-            tone: tone,
+            tone,
         }
     }
 }
@@ -118,6 +114,75 @@ impl CEDict {
                 .filter(|d| !d.is_empty())
                 .map(|d| d.to_string())
                 .collect(),
+        }
+    }
+
+    /// Get all readings of a word.
+    /// If the word is not in the dictionary, break it down to chunks and try
+    /// to find the best chunking of the word that _is_ in the dictionary.
+    /// For e.g., calling `get` with "共同话题" might return `Hanzi` for "共同"
+    /// and "话题".
+    pub fn get(&self, word: &str) -> Vec<&Hanzi> {
+        if let Some(results) = self.dict.get(word) {
+            return results.iter().collect();
+        }
+
+        // Need to segment to try to find chunks that _are_ in the dictionary.
+        let chunkings = generate_all_chunkings(word);
+
+        for chunking in chunkings {
+            if let Some(results) = chunking
+                .into_iter()
+                .map(|chunk| self.dict.get(&chunk))
+                .collect::<Option<Vec<_>>>()
+            {
+                // All of the chunks are in the dictionary!
+                return results.into_iter().flatten().collect();
+            }
+        }
+
+        panic!("The dictionary didn't contain one of the chars of {word}");
+    }
+}
+
+/// Generate all chunkings of a word (save for the entire word)
+/// For example, given "abc", will produce:
+/// [
+///     ["ab", "c"],
+///     ["a", "bc"],
+///     ["a", "b", "c"]
+/// ]
+fn generate_all_chunkings(word: &str) -> Vec<Vec<String>> {
+    // TODO: It _feels_ like we should be able to return Vec<Vec<&str>> here
+    // but I can't get it to compile
+    let cs = word.chars().collect::<Vec<_>>();
+    let mut results: Vec<Vec<String>> = Vec::new();
+    iterate_all_subdivisions(&mut Vec::new(), &cs, &mut |x| {
+        results.push(
+            x.iter()
+                .map(|y| y.into_iter().collect::<String>())
+                .collect(),
+        );
+    });
+    results
+        .into_iter()
+        .rev() // Try the biggest chunking first
+        .skip(1)
+        .collect()
+}
+
+fn iterate_all_subdivisions<'a, F>(head: &mut Vec<&'a [char]>, rest: &'a [char], f: &mut F)
+where
+    F: FnMut(&[&[char]]),
+{
+    if rest.len() == 0 {
+        f(head);
+    } else {
+        for i in 1..=rest.len() {
+            let (next, tail) = rest.split_at(i);
+            head.push(next);
+            iterate_all_subdivisions(head, tail, f);
+            head.pop();
         }
     }
 }
@@ -199,6 +264,22 @@ mod test {
                     text: "ke".into(),
                     tone: Some(Tone::Fourth)
                 }
+            ]
+        );
+    }
+
+    #[test]
+    fn test_chunking() {
+        assert_eq!(
+            generate_all_chunkings("共同话题"),
+            vec![
+                vec!["共同话", "题"],
+                vec!["共同", "话题"],
+                vec!["共同", "话", "题"],
+                vec!["共", "同话题"],
+                vec!["共", "同话", "题"],
+                vec!["共", "同", "话题"],
+                vec!["共", "同", "话", "题"]
             ]
         );
     }

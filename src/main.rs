@@ -1,3 +1,4 @@
+use cjk;
 use clap::Parser;
 use hsk::Hsk;
 use jieba_rs::Jieba;
@@ -54,19 +55,19 @@ fn main() {
         let mut anki = Anki::new(o.split_once(".").unwrap().0);
 
         for word in words {
-            if let Some(hsk_filter) = args.hsk_filter {
-                let hsk_level = hsk_list.get_hsk(word);
-                if hsk_level != 0 && hsk_level <= hsk_filter {
-                    continue;
-                }
+            if !cjk::is_simplified_chinese(word) {
+                continue;
             }
 
-            if let Some(results) = dict.dict.get(word) {
-                for result in results {
-                    anki.add_note(result);
+            for result in dict.get(word) {
+                // Optionally filter out words from lower HSK levels
+                if let Some(hsk_filter) = args.hsk_filter {
+                    let hsk_level = hsk_list.get_hsk(&result.simplified);
+                    if hsk_level != 0 && hsk_level <= hsk_filter {
+                        continue;
+                    }
                 }
-            } else {
-                eprintln!("No match for {word}");
+                anki.add_note(result);
             }
         }
 

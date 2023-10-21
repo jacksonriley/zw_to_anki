@@ -82,7 +82,7 @@ impl Anki {
 
         let deck = Deck::new(1234, deck_name, "");
 
-        Anki { model: model, deck }
+        Anki { model, deck }
     }
 
     pub fn add_note(&mut self, hz: &Hanzi) {
