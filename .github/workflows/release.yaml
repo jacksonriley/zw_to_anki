@@ -1,3 +1,6 @@
+# Stolen from https://github.com/BurntSushi/ripgrep/blob/7099e174acbcbd940f57e4ab4913fee4040c826e/.github/workflows/release.yml
+# -----------
+
 # The way this works is the following:
 #
 # The create-release job runs purely to initialize the GitHub release itself
@@ -16,77 +19,53 @@
 name: release
 on:
   push:
-    # Enable when testing release infrastructure on a branch.
-    # branches:
-    # - ag/work
+    branches:
+    - test_release
     tags:
     - "[0-9]+.[0-9]+.[0-9]+"
 jobs:
   create-release:
     name: create-release
     runs-on: ubuntu-latest
-    # env:
-      # Set to force version number, e.g., when no tag exists.
-      # RG_VERSION: TEST-0.0.0
     outputs:
-      rg_version: ${{ env.RG_VERSION }}
+      rel_version: ${{ env.REL_VERSION }}
     steps:
       - uses: actions/checkout@v3
       - name: Get the release version from the tag
         shell: bash
-        if: env.RG_VERSION == ''
+        if: env.REL_VERSION == ''
         run: |
-          echo "RG_VERSION=$GITHUB_REF_NAME" >> $GITHUB_ENV
-          echo "version is: ${{ env.RG_VERSION }}"
+          echo "REL_VERSION=$GITHUB_REF_NAME" >> $GITHUB_ENV
+          echo "version is: ${{ env.REL_VERSION }}"
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create ${{ env.RG_VERSION }}
+        run: gh release create ${{ env.REL_VERSION }}
 
   build-release:
     name: build-release
     needs: ['create-release']
     runs-on: ${{ matrix.os }}
     env:
-      # For some builds, we use cross to test on 32-bit and big-endian
-      # systems.
-      CARGO: cargo
-      # When CARGO is set to CROSS, this is set to `--target matrix.target`.
-      TARGET_FLAGS: ""
-      # When CARGO is set to CROSS, TARGET_DIR includes matrix.target.
-      TARGET_DIR: ./target
       # Emit backtraces on panics.
       RUST_BACKTRACE: 1
-      # Build static releases with PCRE2.
-      PCRE2_SYS_STATIC: 1
     strategy:
       matrix:
-        build: [linux, linux-arm, macos, win-msvc, win-gnu, win32-msvc]
+        build: [linux, macos, win-msvc]
         include:
         - build: linux
           os: ubuntu-latest
-          rust: nightly
+          rust: stable
           target: x86_64-unknown-linux-musl
-        - build: linux-arm
-          os: ubuntu-latest
-          rust: nightly
           target: arm-unknown-linux-gnueabihf
         - build: macos
           os: macos-latest
-          rust: nightly
+          rust: stable
           target: x86_64-apple-darwin
         - build: win-msvc
           os: windows-latest
-          rust: nightly
+          rust: stable
           target: x86_64-pc-windows-msvc
-        - build: win-gnu
-          os: windows-latest
-          rust: nightly-x86_64-gnu
-          target: x86_64-pc-windows-gnu
-        - build: win32-msvc
-          os: windows-latest
-          rust: nightly
-          target: i686-pc-windows-msvc
 
     steps:
     - name: Checkout repository
@@ -108,58 +87,31 @@ jobs:
         toolchain: ${{ matrix.rust }}
         target: ${{ matrix.target }}
 
-    - name: Use Cross
-      shell: bash
-      run: |
-        cargo install cross
-        echo "CARGO=cross" >> $GITHUB_ENV
-        echo "TARGET_FLAGS=--target ${{ matrix.target }}" >> $GITHUB_ENV
-        echo "TARGET_DIR=./target/${{ matrix.target }}" >> $GITHUB_ENV
-
-    - name: Show command used for Cargo
-      run: |
-        echo "cargo command is: ${{ env.CARGO }}"
-        echo "target flag is: ${{ env.TARGET_FLAGS }}"
-        echo "target dir is: ${{ env.TARGET_DIR }}"
-
     - name: Build release binary
-      run: ${{ env.CARGO }} build --verbose --release --features pcre2 ${{ env.TARGET_FLAGS }}
+      run: cargo build --verbose --release
 
     - name: Strip release binary (linux, macos and macos-arm)
       if: matrix.build == 'linux' || matrix.os == 'macos'
-      run: strip "target/${{ matrix.target }}/release/rg"
-
-    - name: Strip release binary (arm)
-      if: matrix.build == 'linux-arm'
-      run: |
-        docker run --rm -v \
-          "$PWD/target:/target:Z" \
-          rustembedded/cross:arm-unknown-linux-gnueabihf \
-          arm-linux-gnueabihf-strip \
-          /target/arm-unknown-linux-gnueabihf/release/rg
+      run: strip "target/${{ matrix.target }}/release/zw_to_anki"
 
     - name: Build archive
       shell: bash
       run: |
-        outdir="$(ci/cargo-out-dir "${{ env.TARGET_DIR }}")"
-        staging="ripgrep-${{ needs.create-release.outputs.rg_version }}-${{ matrix.target }}"
-        mkdir -p "$staging"/{complete,doc}
+        outdir="$(ci/cargo-out-dir ./target)"
+        staging="zw_to_anki-${{ needs.create-release.outputs.rel_version }}-${{ matrix.target }}"
+        mkdir -p "$staging"
 
-        cp {README.md,COPYING,UNLICENSE,LICENSE-MIT} "$staging/"
-        cp {CHANGELOG.md,FAQ.md,GUIDE.md} "$staging/doc/"
-        cp "$outdir"/{rg.bash,rg.fish,_rg.ps1} "$staging/complete/"
-        cp complete/_rg "$staging/complete/"
+        cp README.md "$staging/"
 
         if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          cp "target/${{ matrix.target }}/release/rg.exe" "$staging/"
+          cp "target/${{ matrix.target }}/release/zw_to_anki.exe" "$staging/"
           7z a "$staging.zip" "$staging"
           certutil -hashfile "$staging.zip" SHA256 > "$staging.zip.sha256"
           echo "ASSET=$staging.zip" >> $GITHUB_ENV
           echo "ASSET_SUM=$staging.zip.sha256" >> $GITHUB_ENV
         else
           # The man page is only generated on Unix systems. ¯\_(ツ)_/¯
-          cp "$outdir"/rg.1 "$staging/doc/"
-          cp "target/${{ matrix.target }}/release/rg" "$staging/"
+          cp "target/${{ matrix.target }}/release/zw_to_anki" "$staging/"
           tar czf "$staging.tar.gz" "$staging"
           shasum -a 256 "$staging.tar.gz" > "$staging.tar.gz.sha256"
           echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
@@ -169,4 +121,4 @@ jobs:
     - name: Upload release archive
       env:
         GH_TOKEN: ${{ github.token }}
-      run: gh release upload ${{ needs.create-release.outputs.rg_version }} ${{ env.ASSET }} ${{ env.ASSET_SUM }}
+      run: gh release upload ${{ needs.create-release.outputs.rel_version }} ${{ env.ASSET }} ${{ env.ASSET_SUM }}
