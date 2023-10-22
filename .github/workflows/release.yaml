@@ -87,7 +87,6 @@ jobs:
     - name: Build archive
       shell: bash
       run: |
-        outdir="$(ci/cargo-out-dir ./target)"
         staging="zw_to_anki-${{ needs.create-release.outputs.rel_version }}-${{ matrix.target }}"
         mkdir -p "$staging"
 
