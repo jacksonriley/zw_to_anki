@@ -20,4 +20,3 @@ Options:
  - squash duplicates into one note?
  - proper error handling, tests
  - add examples from the text on each flashcard
- - CI/CD
