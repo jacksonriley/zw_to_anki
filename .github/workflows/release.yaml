@@ -26,6 +26,7 @@ on:
 jobs:
   create-release:
     name: create-release
+    permissions: write-all
     runs-on: ubuntu-latest
     outputs:
       rel_version: ${{ env.REL_VERSION }}
