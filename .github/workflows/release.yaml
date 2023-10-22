@@ -46,6 +46,7 @@ jobs:
   build-release:
     name: build-release
     needs: ['create-release']
+    permissions: write-all
     runs-on: ${{ matrix.os }}
     env:
       # Emit backtraces on panics.
