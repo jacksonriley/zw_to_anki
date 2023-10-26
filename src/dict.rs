@@ -1,10 +1,11 @@
-use std::collections::HashMap;
+use crate::pinyin::add_diacritic;
+use std::collections::{BTreeSet, HashMap};
 use std::convert::From;
 use std::vec::Vec;
 
 const CE_DICT: &str = include_str!("cedict_1_0_ts_utf-8_mdbg.txt");
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Tone {
     First,
     Second,
@@ -38,15 +39,40 @@ impl From<Tone> for usize {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct PinYin {
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PinYin(pub Vec<PinYinSyllable>);
+
+impl PinYin {
+    pub fn colourise(&self) -> String {
+        self.0
+            .iter()
+            .map(|pys| colourise(&add_diacritic(&pys.text, pys.tone), pys.tone))
+            .collect::<String>()
+    }
+}
+
+fn colourise(token: &str, tone: Option<Tone>) -> String {
+    match tone {
+        None => token.into(),
+        Some(t) => format!(r#"<span class="tone{}">{}</span>"#, usize::from(t), token),
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PinYinSyllable {
     pub text: String,
     pub tone: Option<Tone>,
 }
 
-impl From<&str> for PinYin {
+impl From<&str> for PinYinSyllable {
     fn from(value: &str) -> Self {
         // Parse from e.g. yang3
+        if value == "·" {
+            return Self {
+                text: value.to_string(),
+                tone: None,
+            };
+        }
         let (text, tone_str) = value.split_at(value.len() - 1);
         let tone = tone_str.parse::<u8>().ok().map(Tone::from);
         Self {
@@ -57,14 +83,15 @@ impl From<&str> for PinYin {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Hanzi {
+pub struct Word {
+    /// The simplified characters
     pub simplified: String,
-    pub pinyin: Vec<PinYin>,
-    pub definitions: Vec<String>,
+    /// A mapping of pinyin reading to set of definitions for that reading
+    pub pinyins: HashMap<PinYin, BTreeSet<String>>,
 }
 
 pub struct CEDict {
-    pub dict: HashMap<String, Vec<Hanzi>>,
+    pub dict: HashMap<String, Word>,
 }
 
 impl CEDict {
@@ -74,17 +101,25 @@ impl CEDict {
         }
     }
 
-    fn parse() -> HashMap<String, Vec<Hanzi>> {
+    fn parse() -> HashMap<String, Word> {
         let mut ret = HashMap::new();
 
         for line in CE_DICT.lines() {
             if line.starts_with('#') {
                 continue;
             }
-            let hz = Self::parse_line(line);
-            ret.entry(hz.simplified.clone())
-                .and_modify(|v: &mut Vec<Hanzi>| v.push(hz.clone()))
-                .or_insert(vec![hz]);
+            let word = Self::parse_line(line);
+            ret.entry(word.simplified.clone())
+                .and_modify(|existing_word: &mut Word| {
+                    for (py, defs) in &word.pinyins {
+                        existing_word
+                            .pinyins
+                            .entry(py.clone())
+                            .and_modify(|existing_defs| existing_defs.extend(defs.clone()))
+                            .or_insert(defs.clone());
+                    }
+                })
+                .or_insert(word);
         }
 
         ret
@@ -92,7 +127,7 @@ impl CEDict {
 
     // Parse a line of the form
     // '一氧化氮 一氧化氮 [yi1 yang3 hua4 dan4] /nitric oxide/'
-    fn parse_line(line: &str) -> Hanzi {
+    fn parse_line(line: &str) -> Word {
         // Split first by / to get words and pinyin, and then all of the definitions.
         // Then split by [ to get the words and then the pinyin
         let mut defs = line.split('/');
@@ -101,19 +136,22 @@ impl CEDict {
         let simplified = words.split_whitespace().nth(1).unwrap();
         let pinyin = pinyin_trailing.trim_end_matches("] ");
 
-        let pinyins = pinyin
-            .split_whitespace()
-            .filter(|py| *py != "·")
-            .map(PinYin::from)
-            .collect();
-
-        Hanzi {
-            simplified: simplified.to_string(),
-            pinyin: pinyins,
-            definitions: defs
-                .filter(|d| !d.is_empty())
-                .map(|d| d.to_string())
+        let pinyin = PinYin(
+            pinyin
+                .split_whitespace()
+                .map(PinYinSyllable::from)
                 .collect(),
+        );
+
+        let mut pinyins = HashMap::new();
+        pinyins.insert(
+            pinyin,
+            defs.filter(|d| !d.is_empty()).map(String::from).collect(),
+        );
+
+        Word {
+            simplified: simplified.to_string(),
+            pinyins,
         }
     }
 
@@ -122,9 +160,9 @@ impl CEDict {
     /// to find the best chunking of the word that _is_ in the dictionary.
     /// For e.g., calling `get` with "共同话题" might return `Hanzi` for "共同"
     /// and "话题".
-    pub fn get(&self, word: &str) -> Vec<&Hanzi> {
+    pub fn get(&self, word: &str) -> Vec<&Word> {
         if let Some(results) = self.dict.get(word) {
-            return results.iter().collect();
+            return vec![results];
         }
 
         // Need to segment to try to find chunks that _are_ in the dictionary.
@@ -137,7 +175,7 @@ impl CEDict {
                 .collect::<Option<Vec<_>>>()
             {
                 // All of the chunks are in the dictionary!
-                return results.into_iter().flatten().collect();
+                return results.into_iter().collect();
             }
         }
 
@@ -189,31 +227,38 @@ mod test {
 
     #[test]
     fn test_parse_line() {
-        let hz = CEDict::parse_line(
+        let word = CEDict::parse_line(
             "一氧化二氮 一氧化二氮 [yi1 yang3 hua4 er4 dan4] /nitrous oxide N2O/laughing gas/",
         );
-        assert_eq!(hz.simplified, "一氧化二氮");
-        assert_eq!(hz.definitions, vec!["nitrous oxide N2O", "laughing gas"]);
+        assert_eq!(word.simplified, "一氧化二氮");
         assert_eq!(
-            hz.pinyin,
+            word.pinyins
+                .values()
+                .flatten()
+                .map(|s| &s[..])
+                .collect::<Vec<&str>>(),
+            vec!["laughing gas", "nitrous oxide N2O"]
+        );
+        assert_eq!(
+            word.pinyins.keys().next().unwrap().0,
             vec![
-                PinYin {
+                PinYinSyllable {
                     text: "yi".into(),
                     tone: Some(Tone::First)
                 },
-                PinYin {
+                PinYinSyllable {
                     text: "yang".into(),
                     tone: Some(Tone::Third)
                 },
-                PinYin {
+                PinYinSyllable {
                     text: "hua".into(),
                     tone: Some(Tone::Fourth)
                 },
-                PinYin {
+                PinYinSyllable {
                     text: "er".into(),
                     tone: Some(Tone::Fourth)
                 },
-                PinYin {
+                PinYinSyllable {
                     text: "dan".into(),
                     tone: Some(Tone::Fourth)
                 }
@@ -223,40 +268,44 @@ mod test {
 
     #[test]
     fn test_parse_name() {
-        let hz = CEDict::parse_line("亞歷山大·杜布切克 亚历山大·杜布切克 [Ya4 li4 shan1 da4 · Du4 bu4 qie1 ke4] /Alexander Dubček (1921-1992), leader of Czechoslovakia (1968-1969)/");
-        assert_eq!(hz.simplified, "亚历山大·杜布切克");
+        let word = CEDict::parse_line("亞歷山大·杜布切克 亚历山大·杜布切克 [Ya4 li4 shan1 da4 · Du4 bu4 qie1 ke4] /Alexander Dubček (1921-1992), leader of Czechoslovakia (1968-1969)/");
+        assert_eq!(word.simplified, "亚历山大·杜布切克");
         assert_eq!(
-            hz.pinyin,
+            word.pinyins.keys().next().unwrap().0,
             vec![
-                PinYin {
+                PinYinSyllable {
                     text: "Ya".into(),
                     tone: Some(Tone::Fourth)
                 },
-                PinYin {
+                PinYinSyllable {
                     text: "li".into(),
                     tone: Some(Tone::Fourth)
                 },
-                PinYin {
+                PinYinSyllable {
                     text: "shan".into(),
                     tone: Some(Tone::First)
                 },
-                PinYin {
+                PinYinSyllable {
                     text: "da".into(),
                     tone: Some(Tone::Fourth)
                 },
-                PinYin {
+                PinYinSyllable {
+                    text: "·".into(),
+                    tone: None
+                },
+                PinYinSyllable {
                     text: "Du".into(),
                     tone: Some(Tone::Fourth)
                 },
-                PinYin {
+                PinYinSyllable {
                     text: "bu".into(),
                     tone: Some(Tone::Fourth)
                 },
-                PinYin {
+                PinYinSyllable {
                     text: "qie".into(),
                     tone: Some(Tone::First)
                 },
-                PinYin {
+                PinYinSyllable {
                     text: "ke".into(),
                     tone: Some(Tone::Fourth)
                 }

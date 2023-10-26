@@ -1,7 +1,6 @@
-use std::str::FromStr;
+use std::{collections::HashSet, str::FromStr};
 
-use crate::dict::{Hanzi, Tone};
-use crate::pinyin::add_diacritic;
+use crate::dict::{Tone, Word};
 
 use genanki_rs::{Deck, Field, Model, Note, Template};
 
@@ -82,24 +81,23 @@ impl Anki {
             1607392319,
             "Simple Model",
             vec![
-                Field::new("English"),
+                Field::new("AllDefinitions"),
+                Field::new("AllDefinitionsWithPinyin"),
                 Field::new("Hanzi"),
-                Field::new("Colour"),
-                Field::new("Pinyin"),
+                Field::new("ColourHanzi"),
                 Field::new("Example"),
             ],
             vec![
                 Template::new("Card 1")
-                    .qfmt("<div>{{English}}</div>")
+                    .qfmt("<div>{{AllDefinitions}}</div>")
                     .afmt(
                         r#"
-                        <div>{{English}}</div>
-                        <div class=reading>{{Pinyin}}</div>
                         <div class=chinese>
                             <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
-                                {{Colour}}
+                                {{ColourHanzi}}
                             </a>
                         </div>
+                        <div>{{AllDefinitionsWithPinyin}}</div>
                         <div class=chinese>{{Example}}</div>
                         "#,
                     ),
@@ -109,11 +107,10 @@ impl Anki {
                         r#"
                         <div class=chinese>
                             <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
-                                {{Colour}}
+                                {{ColourHanzi}}
                             </a>
                         </div>
-                        <div class=reading>{{Pinyin}}</div>
-                        <div>{{English}}</div>
+                        <div>{{AllDefinitionsWithPinyin}}</div>
                         <div class=chinese>{{Example}}</div>
                         "#,
                     ),
@@ -147,27 +144,21 @@ impl Anki {
         Anki { model, deck }
     }
 
-    pub fn add_note(&mut self, hz: &Hanzi) {
-        assert_eq!(hz.simplified.chars().count(), hz.pinyin.len());
+    pub fn add_note(&mut self, word: &Word) {
+        // assert_eq!(word.simplified.chars().count(), word.pinyin.len());
         self.deck.add_note(
             Note::new(
                 self.model.clone(),
                 vec![
-                    // English
-                    &hz.definitions.join("<br>"),
+                    // AllDefinitions
+                    &Self::to_all_definitions(word),
+                    // AllDefinitionsWithPinyin
+                    &Self::to_all_definitions_with_pinyin(word),
                     // Hanzi
-                    &hz.simplified,
-                    // Colour
-                    &hz.simplified
-                        .chars()
-                        .zip(hz.pinyin.iter())
-                        .map(|(c, p)| Self::colourise(&c.to_string(), p.tone))
-                        .collect::<String>(),
+                    &word.simplified,
+                    // ColourHanzi
+                    &Self::to_colour_hanzi(word),
                     // Pinyin
-                    &hz.pinyin
-                        .iter()
-                        .map(|p| Self::colourise(&add_diacritic(&p.text, p.tone), p.tone))
-                        .collect::<String>(),
                     // Example
                     "",
                 ],
@@ -185,5 +176,61 @@ impl Anki {
 
     pub fn write_to_file(&self, file: &str) {
         self.deck.write_to_file(file).unwrap()
+    }
+
+    fn to_all_definitions(word: &Word) -> String {
+        word.pinyins
+            .values()
+            .map(|defs| {
+                format!(
+                    "<div>{}</div>",
+                    defs.iter().cloned().collect::<Vec<_>>().join(" · ")
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("")
+    }
+
+    fn to_all_definitions_with_pinyin(word: &Word) -> String {
+        word.pinyins
+            .iter()
+            .map(|(py, defs)| {
+                format!(
+                    "<div class=reading>{}</div><div>{}</div>",
+                    py.colourise(),
+                    defs.iter().cloned().collect::<Vec<_>>().join(" · ")
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("")
+    }
+
+    fn to_colour_hanzi(word: &Word) -> String {
+        let tones_consensus = word
+            .pinyins
+            .keys()
+            .map(|py| py.0.iter().map(|pys| pys.tone).collect::<Vec<_>>())
+            .collect::<HashSet<_>>();
+
+        if word.simplified == "干" {
+            eprintln!("{:?}", word);
+            eprintln!("{:?}", tones_consensus);
+        }
+
+        if tones_consensus.len() == 1 {
+            // There may or may not be multiple readings of this word, but they
+            // all have the same tones, so use that
+            word.simplified
+                .chars()
+                .zip(tones_consensus.into_iter().next().unwrap())
+                .map(|(c, t)| Self::colourise(&c.to_string(), t))
+                .collect::<String>()
+        } else {
+            // There are multiple tone patterns for this word, just return as is
+            word.simplified
+                .chars()
+                .map(|c| Self::colourise(&c.to_string(), Some(Tone::Fifth)))
+                .collect::<String>()
+        }
     }
 }

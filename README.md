@@ -17,6 +17,5 @@ Options:
 ## TODO:
  - add grabbing sound from google TTS and stick that on the flashcards
  - better heuristics about ignoring surnames, maybe?
- - squash duplicates into one note?
  - proper error handling, tests
  - add examples from the text on each flashcard
