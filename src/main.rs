@@ -38,7 +38,6 @@ struct Args {
 }
 
 fn main() {
-    // fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     let to_chunk = match (args.file, args.text) {
@@ -46,19 +45,24 @@ fn main() {
         (None, Some(t)) => t,
         _ => panic!("Supply either file or sentence"),
     };
-    let jieba = Jieba::new();
+    let mut jieba = Jieba::new();
+    let dict = CEDict::new();
+    for word in dict.dict.keys() {
+        // Add in words from the MDBG set - we don't have frequency data for these but it still
+        // seems likely that jieba having a larger vocabulary will help it to correctly segmentise.
+        jieba.add_word(word, None, None);
+    }
     let words: HashSet<_> = jieba.cut(&to_chunk, false).into_iter().collect();
-
-    println!("{:?}", &words);
 
     let hsk_list = Hsk::new();
 
     if let Some(o) = args.output {
-        let dict = CEDict::new();
         let mut anki = Anki::new(
             o.split_once('.').unwrap().0,
             &args.tone_colours.unwrap_or_default(),
         );
+
+        let mut seen = HashSet::new();
 
         for word in words {
             if !cjk::is_simplified_chinese(word) {
@@ -73,7 +77,14 @@ fn main() {
                         continue;
                     }
                 }
+
+                // Don't create multiple cards with the same 汉字.
+                if seen.contains(&result.simplified) {
+                    continue;
+                }
+
                 anki.add_note(result);
+                seen.insert(result.simplified.clone());
             }
         }
 
