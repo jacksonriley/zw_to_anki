@@ -1,3 +1,4 @@
+use clap::ValueEnum;
 use std::{collections::HashSet, str::FromStr};
 
 use crate::dict::{Tone, Word};
@@ -12,6 +13,11 @@ pub enum ToneColours {
     On([String; 5]),
 }
 
+#[derive(Debug, Clone, ValueEnum)]
+pub enum Side {
+    CeToEn,
+    EnToCe,
+}
 impl FromStr for ToneColours {
     type Err = String;
 
@@ -76,7 +82,40 @@ pub struct Anki {
 }
 
 impl Anki {
-    pub fn new(deck_name: &str, tone_colours: &ToneColours) -> Self {
+    pub fn new(deck_name: &str, tone_colours: &ToneColours, side: &Option<Side>) -> Self {
+        let en_to_ce = Template::new("Card 1")
+            .qfmt("<div>{{AllDefinitions}}</div>")
+            .afmt(
+                r#"
+                <div class=chinese>
+                    <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
+                        {{ColourHanzi}}
+                    </a>
+                </div>
+                <div>{{AllDefinitionsWithPinyin}}</div>
+                <div class=chinese>{{Example}}</div>
+                "#,
+            );
+        let ce_to_en = Template::new("Card 2")
+            .qfmt("<div class=chinese>{{Hanzi}}</div>")
+            .afmt(
+                r#"
+                <div class=chinese>
+                    <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
+                        {{ColourHanzi}}
+                    </a>
+                </div>
+                <div>{{AllDefinitionsWithPinyin}}</div>
+                <div class=chinese>{{Example}}</div>
+                "#,
+            );
+
+        let sides = match side {
+            Some(Side::CeToEn) => vec![ce_to_en],
+            Some(Side::EnToCe) => vec![en_to_ce],
+            None => vec![ce_to_en, en_to_ce],
+        };
+
         let model: Model = Model::new(
             1607392319,
             "Simple Model",
@@ -87,34 +126,7 @@ impl Anki {
                 Field::new("ColourHanzi"),
                 Field::new("Example"),
             ],
-            vec![
-                Template::new("Card 1")
-                    .qfmt("<div>{{AllDefinitions}}</div>")
-                    .afmt(
-                        r#"
-                        <div class=chinese>
-                            <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
-                                {{ColourHanzi}}
-                            </a>
-                        </div>
-                        <div>{{AllDefinitionsWithPinyin}}</div>
-                        <div class=chinese>{{Example}}</div>
-                        "#,
-                    ),
-                Template::new("Card 2")
-                    .qfmt("<div class=chinese>{{Hanzi}}</div>")
-                    .afmt(
-                        r#"
-                        <div class=chinese>
-                            <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
-                                {{ColourHanzi}}
-                            </a>
-                        </div>
-                        <div>{{AllDefinitionsWithPinyin}}</div>
-                        <div class=chinese>{{Example}}</div>
-                        "#,
-                    ),
-            ],
+            sides,
         )
         .css(
             r#".card {
@@ -136,7 +148,9 @@ impl Anki {
         .tags {color:gray;text-align:right;font-size:10pt;}
         .note {color:gray;font-size:12pt;margin-top:20pt;}
         .hint {font-size:12pt;}
-        .answer { background-color:bisque; border:dotted;border-width:1px}"#.to_string() + &tone_colours.css(),
+        .answer { background-color:bisque; border:dotted;border-width:1px}"#
+                .to_string()
+                + &tone_colours.css(),
         );
 
         let deck = Deck::new(1234, deck_name, "");
@@ -145,7 +159,6 @@ impl Anki {
     }
 
     pub fn add_note(&mut self, word: &Word) {
-        // assert_eq!(word.simplified.chars().count(), word.pinyin.len());
         self.deck.add_note(
             Note::new(
                 self.model.clone(),
@@ -211,11 +224,6 @@ impl Anki {
             .keys()
             .map(|py| py.0.iter().map(|pys| pys.tone).collect::<Vec<_>>())
             .collect::<HashSet<_>>();
-
-        if word.simplified == "干" {
-            eprintln!("{:?}", word);
-            eprintln!("{:?}", tones_consensus);
-        }
 
         if tones_consensus.len() == 1 {
             // There may or may not be multiple readings of this word, but they

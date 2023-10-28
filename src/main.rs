@@ -9,7 +9,7 @@ mod anki;
 mod dict;
 mod pinyin;
 
-use crate::anki::{Anki, ToneColours};
+use crate::anki::{Anki, Side, ToneColours};
 use crate::dict::CEDict;
 
 /// Chunk up chinese text and make an Anki deck
@@ -35,6 +35,11 @@ struct Args {
     /// Optionally: either "off" to turn tone colours off, or five semicolon-separated RGB colour codes for the five tones. For example, '00e304;b35815;f00f0f;1767fe;777777' (the default).
     #[arg(long)]
     tone_colours: Option<ToneColours>,
+
+    /// Optionally: either 'ce-to-en' to produce only cards that test Chinese to English, or
+    /// 'en-to-ce' for the opposite.
+    #[arg(value_enum, short, long)]
+    side: Option<Side>,
 }
 
 fn main() {
@@ -60,6 +65,7 @@ fn main() {
         let mut anki = Anki::new(
             o.split_once('.').unwrap().0,
             &args.tone_colours.unwrap_or_default(),
+            &args.side,
         );
 
         let mut seen = HashSet::new();
