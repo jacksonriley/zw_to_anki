@@ -8,6 +8,6 @@ edition = "2021"
 [dependencies]
 cjk = "0.2.5"
 clap = { version = "4.4.6", features = ["derive"] }
-genanki-rs = "0.4.0"
+genanki-rs = { git = "https://github.com/jacksonriley/genanki-rs" } # Use version from crates.io when https://github.com/yannickfunk/genanki-rs/pull/15 gets merged
 hsk = "0.1.0"
 jieba-rs = "0.6.8"
