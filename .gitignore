@@ -1,3 +1,5 @@
 /target
 *.apkg
 *.mp3
+*.srt
+*.svg

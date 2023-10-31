@@ -1,13 +1,15 @@
 use clap::Parser;
+use futures::future;
 use hsk::Hsk;
 use jieba_rs::Jieba;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
 mod anki;
 mod dict;
 mod pinyin;
+mod tts;
 
 use crate::anki::{Anki, Side, ToneColours};
 use crate::dict::CEDict;
@@ -40,9 +42,14 @@ struct Args {
     /// 'en-to-ce' for the opposite.
     #[arg(value_enum, short, long)]
     side: Option<Side>,
+
+    /// Add Chinese audio to each flashcard
+    #[arg(long)]
+    tts: bool,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
 
     let to_chunk = match (args.file, args.text) {
@@ -62,13 +69,7 @@ fn main() {
     let hsk_list = Hsk::new();
 
     if let Some(o) = args.output {
-        let mut anki = Anki::new(
-            o.split_once('.').unwrap().0,
-            &args.tone_colours.unwrap_or_default(),
-            &args.side,
-        );
-
-        let mut seen = HashSet::new();
+        let mut words_for_cards = HashMap::new();
 
         for word in words {
             if !cjk::is_simplified_chinese(word) {
@@ -85,15 +86,55 @@ fn main() {
                 }
 
                 // Don't create multiple cards with the same 汉字.
-                if seen.contains(&result.simplified) {
+                if words_for_cards.contains_key(&result.simplified) {
                     continue;
                 }
 
-                anki.add_note(result);
-                seen.insert(result.simplified.clone());
+                words_for_cards.insert(result.simplified.clone(), result);
             }
         }
 
-        anki.write_to_file(&o);
+        let words_for_cards: Vec<_> = words_for_cards.into_values().collect();
+
+        let mut anki = Anki::new(
+            o.split_once('.').unwrap().0,
+            &args.tone_colours.unwrap_or_default(),
+            &args.side,
+            args.tts,
+        );
+
+        let mut filenames = None;
+        if args.tts {
+            let client = reqwest::Client::new();
+            let tts_futures = words_for_cards.iter().map(|word| {
+                tts::save_to_file(
+                    &client,
+                    &word.simplified,
+                    format!("mp3s/{}.mp3", word.simplified),
+                )
+            });
+            filenames = Some(
+                future::join_all(tts_futures)
+                    .await
+                    .into_iter()
+                    .collect::<Result<Vec<_>, _>>()
+                    .unwrap(),
+            );
+        }
+
+        if let Some(ref fs) = filenames {
+            for (word, filename) in words_for_cards.iter().zip(fs.iter()) {
+                anki.add_note(word, Some(filename.strip_prefix("mp3s/").unwrap()));
+            }
+        } else {
+            for word in words_for_cards {
+                anki.add_note(word, None);
+            }
+        }
+
+        anki.write_to_file(
+            &o,
+            filenames.unwrap_or_default().iter().map(|s| &**s).collect(),
+        );
     }
 }

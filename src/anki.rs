@@ -82,33 +82,40 @@ pub struct Anki {
 }
 
 impl Anki {
-    pub fn new(deck_name: &str, tone_colours: &ToneColours, side: &Option<Side>) -> Self {
+    pub fn new(
+        deck_name: &str,
+        tone_colours: &ToneColours,
+        side: &Option<Side>,
+        tts: bool,
+    ) -> Self {
         let en_to_ce = Template::new("Card 1")
             .qfmt("<div>{{AllDefinitions}}</div>")
-            .afmt(
+            .afmt(&format!(
                 r#"
                 <div class=chinese>
-                    <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
-                        {{ColourHanzi}}
+                    <a href="plecoapi://x-callback-url/s?q={{{{Hanzi}}}}" style="text-decoration:none">
+                        {{{{ColourHanzi}}}}
                     </a>
                 </div>
-                <div>{{AllDefinitionsWithPinyin}}</div>
-                <div class=chinese>{{Example}}</div>
+                <div>{{{{AllDefinitionsWithPinyin}}}}</div>
+                <div class=chinese>{{{{Example}}}}</div>{}
                 "#,
-            );
+                if tts { "<br>{{Sound}}" } else { "" }
+            ));
         let ce_to_en = Template::new("Card 2")
             .qfmt("<div class=chinese>{{Hanzi}}</div>")
-            .afmt(
+            .afmt(&format!(
                 r#"
                 <div class=chinese>
-                    <a href="plecoapi://x-callback-url/s?q={{Hanzi}}" style="text-decoration:none">
-                        {{ColourHanzi}}
+                    <a href="plecoapi://x-callback-url/s?q={{{{Hanzi}}}}" style="text-decoration:none">
+                        {{{{ColourHanzi}}}}
                     </a>
                 </div>
-                <div>{{AllDefinitionsWithPinyin}}</div>
-                <div class=chinese>{{Example}}</div>
+                <div>{{{{AllDefinitionsWithPinyin}}}}</div>
+                <div class=chinese>{{{{Example}}}}</div>{}
                 "#,
-            );
+                if tts { "<br>{{Sound}}" } else { "" }
+            ));
 
         let sides = match side {
             Some(Side::CeToEn) => vec![ce_to_en],
@@ -116,19 +123,17 @@ impl Anki {
             None => vec![ce_to_en, en_to_ce],
         };
 
-        let model: Model = Model::new(
-            1607392319,
-            "Simple Model",
-            vec![
-                Field::new("AllDefinitions"),
-                Field::new("AllDefinitionsWithPinyin"),
-                Field::new("Hanzi"),
-                Field::new("ColourHanzi"),
-                Field::new("Example"),
-            ],
-            sides,
-        )
-        .css(
+        let mut fields = vec![
+            Field::new("AllDefinitions"),
+            Field::new("AllDefinitionsWithPinyin"),
+            Field::new("Hanzi"),
+            Field::new("ColourHanzi"),
+            Field::new("Example"),
+        ];
+        if tts {
+            fields.push(Field::new("Sound"));
+        }
+        let model: Model = Model::new(1607392319, "Simple Model", fields, sides).css(
             r#".card {
             font-family: arial;
             font-size: 20px;
@@ -158,26 +163,27 @@ impl Anki {
         Anki { model, deck }
     }
 
-    pub fn add_note(&mut self, word: &Word) {
-        self.deck.add_note(
-            Note::new(
-                self.model.clone(),
-                vec![
-                    // AllDefinitions
-                    &Self::to_all_definitions(word),
-                    // AllDefinitionsWithPinyin
-                    &Self::to_all_definitions_with_pinyin(word),
-                    // Hanzi
-                    &word.simplified,
-                    // ColourHanzi
-                    &Self::to_colour_hanzi(word),
-                    // Pinyin
-                    // Example
-                    "",
-                ],
-            )
-            .unwrap(),
-        );
+    pub fn add_note(&mut self, word: &Word, mp3_file: Option<&str>) {
+        let all_definitions = Self::to_all_definitions(word);
+        let all_definitions_with_pinyin = Self::to_all_definitions_with_pinyin(word);
+        let colour_hanzi = Self::to_colour_hanzi(word);
+        let mut fields = vec![
+            &all_definitions,
+            &all_definitions_with_pinyin,
+            &word.simplified,
+            &colour_hanzi,
+            // Example
+            "",
+        ];
+
+        let sound_field = mp3_file.map(|f| format!("[sound:{f}]"));
+
+        if let Some(f) = sound_field.as_ref() {
+            fields.push(f);
+        }
+
+        self.deck
+            .add_note(Note::new(self.model.clone(), fields).unwrap());
     }
 
     fn colourise(token: &str, tone: Option<Tone>) -> String {
@@ -187,8 +193,11 @@ impl Anki {
         }
     }
 
-    pub fn write_to_file(&self, file: &str) {
-        self.deck.write_to_file(file).unwrap()
+    pub fn write_to_file(&self, file: &str, media_files: Vec<&str>) {
+        dbg!("Using media files: {}", &media_files);
+        let mut my_package =
+            genanki_rs::Package::new(vec![self.deck.clone()], media_files).unwrap();
+        my_package.write_to_file(file).unwrap();
     }
 
     fn to_all_definitions(word: &Word) -> String {
