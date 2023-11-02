@@ -19,7 +19,7 @@ use crate::dict::CEDict;
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// File to be converted to flashcards
-    #[arg(short, long)]
+    #[arg(short, long, conflicts_with = "text")]
     file: Option<PathBuf>,
 
     /// Text to be converted to flashcards
@@ -137,6 +137,9 @@ async fn main() {
             filenames.unwrap_or_default().iter().map(|s| &**s).collect(),
         );
 
-        println!("Successfully created a deck with {} notes", words_for_cards.len());
+        println!(
+            "Successfully created a deck with {} notes",
+            words_for_cards.len()
+        );
     }
 }
