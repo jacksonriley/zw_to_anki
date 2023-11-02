@@ -146,7 +146,7 @@ impl Anki {
         .mac .chinese { }
         .linux .chinese { font-family: "Kochi Mincho", "東風明朝"; }
         .mobile .chinese { font-family: "PingFang SC"; }
-        .chinese { font-size: 30px;}
+        .chinese { font-size: 48px;}
         
         .reading { font-size: 16px;}
         .comment {font-size: 15px; color:grey;}
@@ -194,7 +194,6 @@ impl Anki {
     }
 
     pub fn write_to_file(&self, file: &str, media_files: Vec<&str>) {
-        dbg!("Using media files: {}", &media_files);
         let mut my_package =
             genanki_rs::Package::new(vec![self.deck.clone()], media_files).unwrap();
         my_package.write_to_file(file).unwrap();

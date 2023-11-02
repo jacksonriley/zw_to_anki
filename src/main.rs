@@ -127,7 +127,7 @@ async fn main() {
                 anki.add_note(word, Some(filename.strip_prefix("mp3s/").unwrap()));
             }
         } else {
-            for word in words_for_cards {
+            for word in &words_for_cards {
                 anki.add_note(word, None);
             }
         }
@@ -136,5 +136,7 @@ async fn main() {
             &o,
             filenames.unwrap_or_default().iter().map(|s| &**s).collect(),
         );
+
+        println!("Successfully created a deck with {} notes", words_for_cards.len());
     }
 }
