@@ -66,7 +66,9 @@ pub struct PinYinSyllable {
 
 impl From<&str> for PinYinSyllable {
     fn from(value: &str) -> Self {
-        // Parse from e.g. yang3
+        // Parse from e.g.
+        // 'yang3'
+        // 'lu:4'
         if value == "·" {
             return Self {
                 text: value.to_string(),
@@ -76,7 +78,9 @@ impl From<&str> for PinYinSyllable {
         let (text, tone_str) = value.split_at(value.len() - 1);
         let tone = tone_str.parse::<u8>().ok().map(Tone::from);
         Self {
-            text: text.to_string(),
+            // Note that ü is represented as 'u:' for some reason in the MDBG
+            // dictionary, so fix that here.
+            text: text.replace("u:", "ü"),
             tone,
         }
     }
