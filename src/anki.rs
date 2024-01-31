@@ -226,7 +226,7 @@ impl Anki {
             .join("")
     }
 
-    fn to_colour_hanzi(word: &Word) -> String {
+    pub fn to_colour_hanzi(word: &Word) -> String {
         let tones_consensus = word
             .pinyins
             .keys()
