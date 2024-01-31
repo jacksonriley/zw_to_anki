@@ -98,6 +98,11 @@ pub struct CEDict {
     pub dict: HashMap<String, Word>,
 }
 
+impl Default for CEDict {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl CEDict {
     pub fn new() -> Self {
         Self {
