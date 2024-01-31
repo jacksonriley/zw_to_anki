@@ -6,13 +6,9 @@ use std::collections::{HashMap, HashSet};
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
-mod anki;
-mod dict;
-mod pinyin;
-mod tts;
-
-use crate::anki::{Anki, Side, ToneColours};
-use crate::dict::CEDict;
+use zw_to_anki::anki::{Anki, Side, ToneColours};
+use zw_to_anki::dict::CEDict;
+use zw_to_anki::tts;
 
 /// Chunk up chinese text and make an Anki deck
 #[derive(Parser, Debug)]
