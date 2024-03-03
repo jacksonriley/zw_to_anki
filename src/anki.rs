@@ -98,7 +98,7 @@ impl Anki {
                     </a>
                 </div>
                 <div>{{{{AllDefinitionsWithPinyin}}}}</div>
-                <div class=chinese>{{{{Example}}}}</div>{}
+                <div class=comment>{{{{Example}}}}</div>{}
                 "#,
                 if tts { "<br>{{Sound}}" } else { "" }
             ));
@@ -112,7 +112,7 @@ impl Anki {
                     </a>
                 </div>
                 <div>{{{{AllDefinitionsWithPinyin}}}}</div>
-                <div class=chinese>{{{{Example}}}}</div>{}
+                <div class=comment>{{{{Example}}}}</div>{}
                 "#,
                 if tts { "<br>{{Sound}}" } else { "" }
             ));
@@ -149,7 +149,7 @@ impl Anki {
         .chinese { font-size: 48px;}
         
         .reading { font-size: 16px;}
-        .comment {font-size: 15px; color:grey;}
+        .comment {font-size: 16px; color:grey;}
         .tags {color:gray;text-align:right;font-size:10pt;}
         .note {color:gray;font-size:12pt;margin-top:20pt;}
         .hint {font-size:12pt;}
@@ -163,7 +163,7 @@ impl Anki {
         Anki { model, deck }
     }
 
-    pub fn add_note(&mut self, word: &Word, mp3_file: Option<&str>) {
+    pub fn add_note(&mut self, word: &Word, mp3_file: Option<&str>, example: Option<&str>) {
         let all_definitions = Self::to_all_definitions(word);
         let all_definitions_with_pinyin = Self::to_all_definitions_with_pinyin(word);
         let colour_hanzi = Self::to_colour_hanzi(word);
@@ -172,8 +172,7 @@ impl Anki {
             &all_definitions_with_pinyin,
             &word.simplified,
             &colour_hanzi,
-            // Example
-            "",
+            example.unwrap_or(""),
         ];
 
         let sound_field = mp3_file.map(|f| format!("[sound:{f}]"));

@@ -42,6 +42,10 @@ struct Args {
     /// Add Chinese audio to each flashcard
     #[arg(long)]
     tts: bool,
+
+    /// Don't add an example to each flashcard
+    #[arg(long)]
+    no_example: bool,
 }
 
 #[tokio::main]
@@ -61,6 +65,7 @@ async fn main() {
         jieba.add_word(word, None, None);
     }
     let words: HashSet<_> = jieba.cut(&to_chunk, false).into_iter().collect();
+    let sentences: Vec<_> = to_chunk.split(|c| c == '\n' || c == '。').collect();
 
     let hsk_list = Hsk::new();
 
@@ -120,11 +125,21 @@ async fn main() {
 
         if let Some(ref fs) = filenames {
             for (word, filename) in words_for_cards.iter().zip(fs.iter()) {
-                anki.add_note(word, Some(filename.strip_prefix("mp3s/").unwrap()));
+                let example = if args.no_example {
+                    None
+                } else {
+                    Some(get_example(&sentences, &word.simplified))
+                };
+                anki.add_note(word, Some(filename.strip_prefix("mp3s/").unwrap()), example);
             }
         } else {
             for word in &words_for_cards {
-                anki.add_note(word, None);
+                let example = if args.no_example {
+                    None
+                } else {
+                    Some(get_example(&sentences, &word.simplified))
+                };
+                anki.add_note(word, None, example);
             }
         }
 
@@ -138,4 +153,11 @@ async fn main() {
             words_for_cards.len()
         );
     }
+}
+
+fn get_example<'a>(sentences: &[&'a str], word: &str) -> &'a str {
+    sentences
+        .iter()
+        .find(|e| e.contains(word))
+        .expect("There should be at least one sentence that contains each word")
 }
